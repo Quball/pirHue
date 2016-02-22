@@ -1,60 +1,68 @@
-# Importer RPi.GPIO for kontroll av GPIO pins
+# Import RPi.GPIO to use the GPIO pins
 import RPi.GPIO as GPIO
-# Importer time for å kunne vente i x antall sekunder
+# Import time enable sleeping
 import time
-# Importer requests for å kommunisere med API
+# Import reqests to communicate with the Hue API
 import requests
 
-# Fortell hvilken pin sensor input er koblet til
+# The number of the pin that the input is connected to
 sensor = 4
 
-# Fortell hvilken tellemåte jeg har brukt for å telle pins
+# Set the mode that is used to count the pins on the board
 GPIO.setmode( GPIO.BCM )
-# Sett opp min input pin som input
+# Initialize the pin as an input pin. Set the starting state to DOWN (false)
 GPIO.setup( sensor, GPIO.IN, GPIO.PUD_DOWN )
 
-# Setter initial states
+# Set initial states
 previous_state = False
 current_state = False
 
 ### Denne delen er for å kommunisere med Hue API
 
-# IP-adressen til Hue Bridge
-hueIp = "[REDACTED]"
+# IP adress of the Hue Bridge
+hueIp = "192.168.1.100"
 
-# Rasperry brukernavn på bridge
-hueUser = "[REDACTED]"
+# The raspberry's user name on the bridge
+hueUser = "231b420d85be57e665ac3f57a8bd563"
 
-# URL til API-et
+# URL for the API
 hueApi = "http://" + hueIp + "/api/" + hueUser
 
 ### Slutt på API-delen
 
-# Evig løkke for å sjekke sensoren
 try:
-        while 1:
-                # Vent 0.1 sekund
+	# Infinite loop to check the sensor (polling)
+        # While 1 is supposedly faster than while True
+	while 1:
+                # Wait 0.1 second
                 time.sleep( 0.1 )
                 # Forrige er det som var nåværende i forrige runde
-                previous_state = current_state
-                # Nåværende state hentes fra pin
+                # Previous state is what current state used to be
+		previous_state = current_state
+		# Get current state from the sensor
                 current_state = GPIO.input( sensor )
-                # Hvis det har skjedd en endring
+                # If there has been a change
                 if current_state != previous_state:
-                        # Hvis current_state er FALSE, skru av lyset
-                        # Hvis current_state er TRUE, skru på lyset
+			# If current_state is True: Turn on the light
                         if current_state:
-                                print( "Skrur på lyset" )
+                                print( "Turning on the light" )
                                 putResponse = requests.put( hueApi + "/lights/3/state", '{ "on": true }' )
-                        else:
-                                print( "Skrur av lyset om 5 sekunder" )
+                        # If current_state is False
+			else:
+				# Wait for 60 seconds to see if there is any movement
+                                print( "Turning off the light in 60 seconds" )
+				# Wait for a rising edge (0 -> 1), but time out after 60 seconds
                                 waitForRise = GPIO.wait_for_edge( sensor, GPIO.RISING, timeout = 60000 )
-                                if waitForRise is None:
-                                        print( "Tiden er ute, skrur av lyset" )
+                                # wait_for_edge returns None if it times out
+				if waitForRise is None:
+                                        print( "Time's up, turning off the light" )
                                         putResponse = requests.put( hueApi + "/lights/3/state", '{ "on": false }' )
-                                else:
-                                        print( "Skrur ikke av lyset allikevel" )
+                                # A rising edge was detected, abort
+				# This part can be removed in a more final version
+				else:
+                                        print( "Movement detected; keeping the light on" )
                                         pass
+# If someone hits CTRL+C: Exit
 except KeyboardInterrupt:
-        print( "\nAvslutter" )
+        print( "\nExitting" )
         GPIO.cleanup()
