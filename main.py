@@ -17,7 +17,7 @@ GPIO.setup( sensor, GPIO.IN, GPIO.PUD_DOWN )
 previous_state = False
 current_state = False
 
-### Denne delen er for å kommunisere med Hue API
+### This part is all about communicating with the API
 
 # IP adress of the Hue Bridge
 hueIp = "192.168.1.100"
@@ -28,7 +28,7 @@ hueUser = "231b420d85be57e665ac3f57a8bd563"
 # URL for the API
 hueApi = "http://" + hueIp + "/api/" + hueUser
 
-### Slutt på API-delen
+### End of the API part
 
 try:
 	# Infinite loop to check the sensor (polling)
