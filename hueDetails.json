@@ -1,1 +1,1 @@
-{ "users": [ { "username": "raspHue#raspen", "password": "231b420d85be57e665ac3f57a8bd563" } ] }
+{ "users": { "username": "raspHue#raspen", "password": "231b420d85be57e665ac3f57a8bd563" } }
