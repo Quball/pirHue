@@ -61,8 +61,8 @@ try:
                         else:
                                 # Wait for 60 seconds to see if there is any movement
                                 print( "Turning off the light in 60 seconds" )
-                                # Wait for a rising edge (0 -> 1), but time out after 60 seconds
-                                waitForRise = GPIO.wait_for_edge( sensor, GPIO.RISING, timeout = 60000 )
+                                # Wait for a rising edge (0 -> 1), but time out after 10 minutes
+                                waitForRise = GPIO.wait_for_edge( sensor, GPIO.RISING, timeout = 600000 )
                                 # wait_for_edge returns None if it times out
                                 if waitForRise is None:
                                         print( "Time's up, turning off the light" )
