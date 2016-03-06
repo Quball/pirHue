@@ -55,24 +55,24 @@ try:
                 if current_state != previous_state:
                         # If current_state is True: Turn on the light
                         if current_state:
-                                print( "Turning on the light" )
+                                #print( "Turning on the light" )
                                 putResponse = requests.put( hueApi + "/lights/3/state", '{ "on": true }' )
                         # If current_state is False
                         else:
                                 # Wait for 60 seconds to see if there is any movement
-                                print( "Turning off the light in 60 seconds" )
+                                #print( "Turning off the light in 60 seconds" )
                                 # Wait for a rising edge (0 -> 1), but time out after 10 minutes
                                 waitForRise = GPIO.wait_for_edge( sensor, GPIO.RISING, timeout = 600000 )
                                 # wait_for_edge returns None if it times out
                                 if waitForRise is None:
-                                        print( "Time's up, turning off the light" )
+                                        #print( "Time's up, turning off the light" )
                                         putResponse = requests.put( hueApi + "/lights/3/state", '{ "on": false }' )
                                 # A rising edge was detected, abort
                                 # This part can be removed in a more final version
-                                else:
-                                        print( "Movement detected; keeping the light on" )
-                                        pass
-# If someone hits CTRL+C: Exit
-except KeyboardInterrupt:
-        print( "\nExitting" )
+                                #else:
+                                        #print( "Movement detected; keeping the light on" )
+                                        #pass
+# Cleaning up on exit
+finally:
+        #print( "Exiting" )
         GPIO.cleanup()
