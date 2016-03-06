@@ -46,7 +46,6 @@ try:
         while 1:
                 # Wait 0.1 second
                 time.sleep( 0.1 )
-                # Forrige er det som var nåværende i forrige runde
                 # Previous state is what current state used to be
                 previous_state = current_state
                 # Get current state from the sensor
