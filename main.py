@@ -67,10 +67,11 @@ try:
                                         #print( "Time's up, turning off the light" )
                                         putResponse = requests.put( hueApi + "/lights/3/state", '{ "on": false }' )
                                 # A rising edge was detected, abort
-                                # This part can be removed in a more final version
-                                #else:
+                                # Sett current_state to True
+                                else:
                                         #print( "Movement detected; keeping the light on" )
-                                        #pass
+                                        current_state = True
+                                        pass
 # Cleaning up on exit
 finally:
         #print( "Exiting" )
