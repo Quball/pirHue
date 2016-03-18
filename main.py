@@ -40,7 +40,7 @@ hueApi = "http://" + hueIp + "/api/" + hueUserID
 
 ### End of the API part
 
-# Get the current state of the light
+# Get the current state of the light. Returns True or False
 def getHueState():
     hueResponse = requests.get( hueApi + "/lights/3/" )
     hueState = hueResponse.json()['state']['on']
@@ -66,8 +66,6 @@ signal.signal( signal.SIGTERM, terminateReceived )
 while 1:
     # Wait 0.1 second
     time.sleep( 0.5 )
-    # Get the current state of the light
-    hueState = getHueState()
     # Previous state is what current state used to be
     previous_state = current_state
     # Get current state from the sensor
@@ -75,26 +73,25 @@ while 1:
     # If there has been a change
     if current_state != previous_state:
         # If current_state is True and the lights is off: Turn on the light
-        if current_state and not hueState:
-            print( "Turning on the light" )
+        if current_state and not getHueState():
+            print( "Turning the light on" )
             putResponse = requests.put( hueApi + "/lights/3/state", '{ "on": true }' )
-            hueState = getHueState()
         # If current_state is False and the light is on: Wait a bit
-        elif not current_state and hueState:
+        elif not current_state and getHueState():
             # Wait for 60 seconds to see if there is any movement
-            print( "Turning off the light in 10 minuts" )
+            print( "No movement; turning the light off in 10 minutes" )
             # Wait for a rising edge (0 -> 1), but time out after 10 minutes
             waitForRise = GPIO.wait_for_edge( sensor, GPIO.RISING, timeout = 600000 )
             # wait_for_edge returns None if it times out
             if waitForRise is None:
-                print( "Time's up, turning off the light" )
-                putResponse = requests.put( hueApi + "/lights/3/state", '{ "on": false }' )
-                hueState = getHueState()
+                print( "Time's up, turning the light off" )
             # A rising edge was detected, abort
-            # Sett current_state to True
             else:
                 print( "Movement detected; keeping the light on" )
-                current_state = True
-                hueState = getHueState()
+                # If the light has been turned off outside of the application, I need to detect that
+                if not getHueState():
+                    print( "Lyset var av, skrur det på" )
+                    putResponse = requests.put( hueApi + "/lights/3/state", '{ "on": true }' )
+                    current_state = True # There is movement, so set current_state to True
         # If no movement and the light is off: Do nothing
         # If movement and the light is on: Do nothing
