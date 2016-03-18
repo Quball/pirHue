@@ -74,23 +74,24 @@ while 1:
     if current_state != previous_state:
         # If current_state is True and the lights is off: Turn on the light
         if current_state and not getHueState():
-            print( "Turning the light on" )
+            #print( "Turning the light on" )
             putResponse = requests.put( hueApi + "/lights/3/state", '{ "on": true }' )
         # If current_state is False and the light is on: Wait a bit
         elif not current_state and getHueState():
             # Wait for 60 seconds to see if there is any movement
-            print( "No movement; turning the light off in 10 minutes" )
+            #print( "No movement; turning the light off in 10 minutes" )
             # Wait for a rising edge (0 -> 1), but time out after 10 minutes
             waitForRise = GPIO.wait_for_edge( sensor, GPIO.RISING, timeout = 600000 )
             # wait_for_edge returns None if it times out
             if waitForRise is None:
-                print( "Time's up, turning the light off" )
+                #print( "Time's up, turning the light off" )
+                putResponse = requests.put( hueApi + "/lights/3/state", '{ "on": false }' )
             # A rising edge was detected, abort
             else:
-                print( "Movement detected; keeping the light on" )
+                #print( "Movement detected; keeping the light on" )
                 # If the light has been turned off outside of the application, I need to detect that
                 if not getHueState():
-                    print( "Lyset var av, skrur det på" )
+                    #print( "Lyset var av, skrur det på" )
                     putResponse = requests.put( hueApi + "/lights/3/state", '{ "on": true }' )
                     current_state = True # There is movement, so set current_state to True
         # If no movement and the light is off: Do nothing
