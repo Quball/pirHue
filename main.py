@@ -61,38 +61,32 @@ def terminateReceived( signalnumber, stackFrame ):
 # Set the handler that is called when SIGTERM is received
 signal.signal( signal.SIGTERM, terminateReceived )
 
-# Infinite loop to check the sensor (polling)
-# While 1 is supposedly faster than while True
-while 1:
-    # Wait 0.1 second
-    time.sleep( 0.5 )
-    # Previous state is what current state used to be
-    previous_state = current_state
-    # Get current state from the sensor
-    current_state = GPIO.input( sensor )
-    # If there has been a change
-    if current_state != previous_state:
-        # If current_state is True and the lights is off: Turn on the light
-        if current_state and not getHueState():
-            #print( "Turning the light on" )
-            putResponse = requests.put( hueApi + "/lights/3/state", '{ "on": true }' )
-        # If current_state is False and the light is on: Wait a bit
-        elif not current_state and getHueState():
-            # Wait for 60 seconds to see if there is any movement
-            #print( "No movement; turning the light off in 10 minutes" )
-            # Wait for a rising edge (0 -> 1), but time out after 10 minutes
-            waitForRise = GPIO.wait_for_edge( sensor, GPIO.RISING, timeout = 600000 )
-            # wait_for_edge returns None if it times out
-            if waitForRise is None:
-                #print( "Time's up, turning the light off" )
-                putResponse = requests.put( hueApi + "/lights/3/state", '{ "on": false }' )
-            # A rising edge was detected, abort
-            else:
-                #print( "Movement detected; keeping the light on" )
-                # If the light has been turned off outside of the application, I need to detect that
-                if not getHueState():
-                    #print( "Lyset var av, skrur det på" )
-                    putResponse = requests.put( hueApi + "/lights/3/state", '{ "on": true }' )
-                    current_state = True # There is movement, so set current_state to True
-        # If no movement and the light is off: Do nothing
-        # If movement and the light is on: Do nothing
+# This is the callback function. It's called whenever an edge is detected
+def callbackFunc( sensor ):
+    print ( "In callbackFunc" )
+    if GPIO.input( sensor ) and not getHueState(): # Movement and light is off
+        print( "Turning the light on" )
+        putResponse = requests.put( hueApi + "/lights/3/state", '{ "on": true }' )
+    elif not GPIO.input( sensor ) and getHueState(): # No movement and light is on
+        print( "No movement; waiting for rising edge" )
+        waitForRise = GPIO.wait_for_edge( sensor, GPIO.RISING, timeout = 2000 ) # This doesn't work: Can't have two edge detections on the same channel
+        if waitForRise is None:
+            print( "No rising edge; turning off" )
+            putResponse = requests.put( hueApi + "/lights/3/state", '{ "on": false }' )
+        else:
+            print( "Rising edge; keeping the light on" )
+
+# Add event detect
+GPIO.add_event_detect( sensor, GPIO.BOTH )
+
+# Add event callback
+GPIO.add_event_callback( sensor, callbackFunc )
+
+# The try/except can be removed before release. In release I detect signal handler
+try:
+    while 1:
+        print( ".", end = "", flush = True )
+        time.sleep( 2 )
+except KeyboardInterrupt:
+    print( "Cleaning up" )
+    GPIO.cleanup()
