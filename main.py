@@ -51,6 +51,21 @@ hueApi = "http://" + hueIp + "/api/" + hueUserID
 
 ### End of the API part
 
+# Waits for a rising edge. Returns True if a rising edge is detected
+def waitForRise( waitingTime ):
+    global sensor
+    GPIO.remove_event_detect( sensor )
+    print( "Waiting for a rising edge. Timeout is " + str( waitingTime / 1000 ) + " seconds" )
+    waiting = GPIO.wait_for_edge( sensor, GPIO.BOTH, timeout = waitingTime )
+    if waiting is None:
+        GPIO.remove_event_detect( sensor )
+        GPIO.add_event_detect( sensor, GPIO.BOTH, callback = callbackFunc )
+        return False
+    else:
+        GPIO.remove_event_detect( sensor )
+        GPIO.add_event_detect( sensor, GPIO.BOTH, callback = callbackFunc )
+        return True
+
 # Get the current state of the light. Returns True or False
 def getHueState():
     hueResponse = requests.get( hueApi + "/lights/3/" )
@@ -64,8 +79,12 @@ def callbackFunc( sensor ):
         print( "Turning the light on" )
         putResponse = requests.put( hueApi + "/lights/3/state", '{ "on": true }' )
     elif not GPIO.input( sensor ) and getHueState(): # No movement and light is on
-        print( "Turning the light off" )
-        putResponse = requests.put( hueApi + "/lights/3/state", '{ "on": false }' )
+        if waitForRise( 600000 ):
+            print( "Rising edge detected; keeping the light on" )
+            callbackFunc( sensor ) # If the light has been turned off externally, I need to turn it back on
+        else:
+            print( "Still no movement; turning the light off" )
+            putResponse = requests.put( hueApi + "/lights/3/state", '{ "on": false }' )
 
 # Add event detect with callback
 GPIO.add_event_detect( sensor, GPIO.BOTH, callback = callbackFunc )
