@@ -16,6 +16,10 @@ GPIO.setmode( GPIO.BCM )
 GPIO.setup( sensor, GPIO.IN, GPIO.PUD_DOWN )
 
 def terminateReceived( signalnumber, stackFrame ):
+    """
+    When a termination signal is received (through kill),
+    this function makes sure the program cleans up after itself
+    """
     GPIO.cleanup()
     #os.unlink( pidFile ) # Deletes the PID file
     sys.exit(0) # Exits Python
