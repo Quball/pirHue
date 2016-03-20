@@ -16,7 +16,6 @@ GPIO.setmode( GPIO.BCM )
 GPIO.setup( sensor, GPIO.IN, GPIO.PUD_DOWN )
 
 def terminateReceived( signalnumber, stackFrame ):
-    print( "\nSignal handler called with signal\n", signalnumber )
     GPIO.cleanup()
     #os.unlink( pidFile ) # Deletes the PID file
     sys.exit(0) # Exits Python
@@ -51,49 +50,53 @@ hueApi = "http://" + hueIp + "/api/" + hueUserID
 
 ### End of the API part
 
-# Waits for a rising edge. Returns True if a rising edge is detected
 def waitForRise( waitingTime ):
+    """
+    Waits for a rising edge
+    Returns True if a rising edge is detected, False otherwise
+    Parameter waitingTime defines how many milliseconds the
+    function waits before timing out
+    """
     global sensor
+    # A channel can only have one event detection.
+    # Need to remove the original one so that I can add one that waits for rising edges
+    # This event detection is only used in this function
     GPIO.remove_event_detect( sensor )
-    print( "Waiting for a rising edge. Timeout is " + str( waitingTime / 1000 ) + " seconds" )
+    # Waits for a rising edge. Times out after [waitingTime] milliseconds
     waiting = GPIO.wait_for_edge( sensor, GPIO.BOTH, timeout = waitingTime )
-    if waiting is None:
-        GPIO.remove_event_detect( sensor )
+    if waiting is None: # wait_for_edge returns None if it times out
+        GPIO.remove_event_detect( sensor ) # Removes the temporary event detection
+        # Adds event detection for both rising and falling edges
         GPIO.add_event_detect( sensor, GPIO.BOTH, callback = callbackFunc )
-        return False
+        return False # No new rising edge detected
     else:
         GPIO.remove_event_detect( sensor )
         GPIO.add_event_detect( sensor, GPIO.BOTH, callback = callbackFunc )
-        return True
+        return True # Rising edge detected
 
-# Get the current state of the light. Returns True or False
 def getHueState():
+    """
+    Returns the current state of the light; True if on, False otherwise
+    """
     hueResponse = requests.get( hueApi + "/lights/3/" )
     hueState = hueResponse.json()['state']['on']
     return hueState
 
-# This is the callback function. It's called whenever an edge is detected
 def callbackFunc( sensor ):
-    print ( "In callbackFunc" )
+    """
+    Callback function, is called whenever an edge is detected
+    """
     if GPIO.input( sensor ) and not getHueState(): # Movement and light is off
-        print( "Turning the light on" )
         putResponse = requests.put( hueApi + "/lights/3/state", '{ "on": true }' )
     elif not GPIO.input( sensor ) and getHueState(): # No movement and light is on
         if waitForRise( 600000 ):
-            print( "Rising edge detected; keeping the light on" )
             callbackFunc( sensor ) # If the light has been turned off externally, I need to turn it back on
         else:
-            print( "Still no movement; turning the light off" )
             putResponse = requests.put( hueApi + "/lights/3/state", '{ "on": false }' )
 
 # Add event detect with callback
 GPIO.add_event_detect( sensor, GPIO.BOTH, callback = callbackFunc )
 
-# The try/except can be removed before release. In release I detect signal handler
-try:
-    while 1:
-        print( ".", end = "", flush = True )
-        time.sleep( 1 )
-except KeyboardInterrupt:
-    print( "Cleaning up" )
-    GPIO.cleanup()
+# Infinite loop. Does nothing
+while 1:
+    time.sleep( 1 )
