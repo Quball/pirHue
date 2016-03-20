@@ -15,9 +15,20 @@ GPIO.setmode( GPIO.BCM )
 # Initialize the pin as an input pin. Set the starting state to DOWN (false)
 GPIO.setup( sensor, GPIO.IN, GPIO.PUD_DOWN )
 
-# Set initial states
-previous_state = False
-current_state = False
+def terminateReceived( signalnumber, stackFrame ):
+    print( "\nSignal handler called with signal\n", signalnumber )
+    GPIO.cleanup()
+    #os.unlink( pidFile ) # Deletes the PID file
+    sys.exit(0) # Exits Python
+    return
+
+# Set the handler that is called when SIGTERM is received
+signal.signal( signal.SIGTERM, terminateReceived )
+
+# Write PID to file. Can only write string, not int
+pid = str( os.getpid() )
+with open( "pid.txt", "w" ) as pidFile:
+    pidFile.write( pid )
 
 ### This part is all about communicating with the API
 
@@ -46,21 +57,6 @@ def getHueState():
     hueState = hueResponse.json()['state']['on']
     return hueState
 
-# Write PID to file. Can only write string, not int
-pid = str( os.getpid() )
-with open( "pid.txt", "w" ) as pidFile:
-    pidFile.write( pid )
-
-def terminateReceived( signalnumber, stackFrame ):
-    print( "\nSignal handler called with signal\n", signalnumber )
-    GPIO.cleanup()
-    #os.unlink( pidFile ) # Deletes the PID file
-    sys.exit(0) # Exits Python
-    return
-
-# Set the handler that is called when SIGTERM is received
-signal.signal( signal.SIGTERM, terminateReceived )
-
 # This is the callback function. It's called whenever an edge is detected
 def callbackFunc( sensor ):
     print ( "In callbackFunc" )
@@ -68,25 +64,17 @@ def callbackFunc( sensor ):
         print( "Turning the light on" )
         putResponse = requests.put( hueApi + "/lights/3/state", '{ "on": true }' )
     elif not GPIO.input( sensor ) and getHueState(): # No movement and light is on
-        print( "No movement; waiting for rising edge" )
-        waitForRise = GPIO.wait_for_edge( sensor, GPIO.RISING, timeout = 2000 ) # This doesn't work: Can't have two edge detections on the same channel
-        if waitForRise is None:
-            print( "No rising edge; turning off" )
-            putResponse = requests.put( hueApi + "/lights/3/state", '{ "on": false }' )
-        else:
-            print( "Rising edge; keeping the light on" )
+        print( "Turning the light off" )
+        putResponse = requests.put( hueApi + "/lights/3/state", '{ "on": false }' )
 
-# Add event detect
-GPIO.add_event_detect( sensor, GPIO.BOTH )
-
-# Add event callback
-GPIO.add_event_callback( sensor, callbackFunc )
+# Add event detect with callback
+GPIO.add_event_detect( sensor, GPIO.BOTH, callback = callbackFunc )
 
 # The try/except can be removed before release. In release I detect signal handler
 try:
     while 1:
         print( ".", end = "", flush = True )
-        time.sleep( 2 )
+        time.sleep( 1 )
 except KeyboardInterrupt:
     print( "Cleaning up" )
     GPIO.cleanup()
